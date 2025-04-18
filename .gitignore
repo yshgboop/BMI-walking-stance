@@ -1,3 +1,8 @@
+*.csv
+Plot_mssp.ipynb
+Plot.ipynb
+.vscode
+.DS_Store
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
