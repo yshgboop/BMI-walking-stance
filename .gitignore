@@ -3,6 +3,8 @@ Plot_mssp.ipynb
 Plot.ipynb
 .vscode
 .DS_Store
+*.xlsx
+*.docx
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -177,3 +179,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.Rproj.user

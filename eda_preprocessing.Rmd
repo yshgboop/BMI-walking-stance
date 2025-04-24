@@ -1,0 +1,196 @@
+---
+title: "EDA and datapreprocessing"
+output: pdf_document
+date: "2025-04-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggcorrplot)
+library(ggplot2)
+```
+
+```{r}
+df <- read.csv('BodyShape.csv')
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+normal_df <- subset(df, Group == 0)
+obese_df  <- subset(df, Group == 1)
+```
+
+```{r}
+summary(normal_df)
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+hist(normal_df$Peak, main="Peak", xlab="Peak")
+boxplot(normal_df$Peak,  main="Peak")
+```
+```{r}
+par(mfrow=c(1,2))
+hist(obese_df$Peak, main="Peak", xlab="Peak")
+boxplot(obese_df$Peak,  main="Peak")
+```
+```{r}
+
+
+# 1. select your variables of interest
+vars <- c("Peak","BMI","height_m","weight_kg","waist_cir","hip_cir",
+          "neck_cir","SH_B","SH_D","CH_B","CH_D","WA_B","WA_D","W.H.ratio")
+
+# 2. compute and round the correlation matrix
+corr <- round(cor(df[vars], use="pairwise.complete.obs"), 2)
+
+# 3. plot with hierarchical clustering, upper triangle only, labels, custom palette
+ggcorrplot(
+  corr,
+  hc.order   = TRUE,      # reorder variables by clustering
+  type       = "upper",   # only show upper triangle
+  lab        = TRUE,      # label each cell with correlation
+  lab_size   = 3,         # font size of labels
+  method     = "circle",  # or "square"
+  colors     = c("#6D9EC1", "white", "#E46726"),
+  title      = "Correlation of Body Measurements with Peak",
+  ggtheme    = theme_minimal()
+) +
+ theme(
+   axis.text.x = element_text(angle = 45, hjust = 1),
+   plot.title  = element_text(hjust = .5, size = 14)
+)
+
+```
+```{r}
+ggplot(normal_df, aes(x = Task, y = Peak)) +
+  geom_boxplot(outlier.shape = NA, fill = "#BDD7E7") +
+  geom_jitter(width = 0.2, alpha = 0.3, color = "#2171B5") +
+  labs(
+    title    = "Distribution of Peak by Task NB",
+    x        = "Task",
+    y        = "Peak"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title   = element_text(hjust = 0.5),
+    axis.text.x  = element_text(angle = 45, hjust = 1)
+  )
+
+```
+```{r}
+ggplot(obese_df, aes(x = Task, y = Peak)) +
+  geom_boxplot(outlier.shape = NA, fill = "#BDD7E7") +
+  geom_jitter(width = 0.2, alpha = 0.3, color = "#2171B5") +
+  labs(
+    title    = "Distribution of Peak by Task OB",
+    x        = "Task",
+    y        = "Peak"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title   = element_text(hjust = 0.5),
+    axis.text.x  = element_text(angle = 45, hjust = 1)
+  )
+
+```
+```{r}
+df_subj <- normal_df %>%
+  group_by(studyid, Task) %>%
+  summarize(meanPeak = mean(Peak), .groups = "drop")
+
+ggplot(df_subj, aes(x = Task, y = meanPeak)) +
+  geom_violin(fill = "#FCBBA1", alpha = 0.7, trim = FALSE) +
+  stat_summary(fun = "median", geom = "point", size = 2, color = "red") +
+  geom_jitter(width = 0.15, alpha = 0.5) +
+  labs(
+    title = "Participant Level Mean Peak by Task NB",
+    x     = "Task",
+    y     = "Mean Peak"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title  = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+```{r}
+df_subj <- obese_df %>%
+  group_by(studyid, Task) %>%
+  summarize(meanPeak = mean(Peak), .groups = "drop")
+
+ggplot(df_subj, aes(x = Task, y = meanPeak)) +
+  geom_violin(fill = "#FCBBA1", alpha = 0.7, trim = FALSE) +
+  stat_summary(fun = "median", geom = "point", size = 2, color = "red") +
+  geom_jitter(width = 0.15, alpha = 0.5) +
+  labs(
+    title = "Participant Level Mean Peak by Task NB",
+    x     = "Task",
+    y     = "Mean Peak"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title  = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+```{r}
+library(car)
+mod <- lm(Peak ~ height_m + 
+    weight_kg + DST + Stroop + PA +
+    ASIS + waist_cir, data = normal_df)
+car::vif(mod)
+```
+```{r}
+library(usdm)
+clean_data <- na.omit(normal_df)
+# select only the numeric columns (minus Peak if you like)
+nums <- clean_data %>% select_if(is.numeric)
+
+```
+```{r}
+# install.packages("caret")
+library(caret)
+
+# nums is your numeric-only df
+combo_info <- findLinearCombos(nums)
+combo_info
+
+```
+```{r}
+# nums is your numeric-only df
+nums2 <- nums[, -combo_info$remove]
+vif(nums2)
+```
+
+```{r}
+library(lme4)
+m <- lmer(Peak ~ BMI + (1|studyid) + (1|Task), data=normal_df)
+summary(m)
+```
+```{r}
+# only the numeric predictors
+nums <- normal_df %>%
+  select_if(is.numeric) %>%
+  select(-Peak, -N, -studyid, -Group, -BS, -InitialPeak, -MinPeak)
+
+corr <- cor(nums, use = "pairwise.complete.obs")
+```
+```{r}
+# install.packages("corrplot")
+library(corrplot)
+corrplot(
+  corr,
+  method = "color",
+  type   = "upper",
+  tl.cex = 0.7,
+  diag   = FALSE
+)
+```
+
