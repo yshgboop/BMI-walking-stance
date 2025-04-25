@@ -1,0 +1,269 @@
+---
+title: 'consulting'
+author: "Yishun Zhang"
+date: "2025-03-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+df1 <- read_csv("C:/Users/17756/Downloads/NB_FF.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_FF.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "BN_FF"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_FF"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_FF and OB_FF"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+
+
+```
+
+
+```{r}
+df1 <- read_csv("C:/Users/17756/Downloads/NB_PRF.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_PRF.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "BN_PRF"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_PRF"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_PRF and OB_PRF"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+```
+```{r}
+df1 <- read_csv("C:/Users/17756/Downloads/NB_OCMB.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_OCMB.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "NB_OCMB"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_OCMB"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_OCMB and OB_OCMB"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+```
+
+```{r}
+df1 <- read_csv("C:/Users/17756/Downloads/NB_OCMA.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_OCMA.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "BN_OCMA"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_OCMA"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_OCMA and OB_OCMA"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+```
+
+```{r}
+df1 <- read_csv("C:/Users/17756/Downloads/NB_OCHB.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_OCHB.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "BN_OCHB"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_OCHB"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_OCHB and OB_OCHB"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+```
+
+```{r}
+df1 <- read_csv("C:/Users/17756/Downloads/NB_OCHA.csv", col_names = FALSE,
+                       show_col_types = FALSE)
+df2 <- read_csv("C:/Users/17756/Downloads/OB_OCHA.csv", col_names = FALSE,
+                       show_col_types = FALSE)  
+
+
+stats1 <- data.frame(
+  ColIndex = seq_len(ncol(df1)),
+  Min  = apply(df1, 2, min),
+  Max  = apply(df1, 2, max),
+  Mean = apply(df1, 2, mean),
+  Group = "BN_OCHA"
+)
+
+stats2 <- data.frame(
+  ColIndex = seq_len(ncol(df2)),
+  Min  = apply(df2, 2, min),
+  Max  = apply(df2, 2, max),
+  Mean = apply(df2, 2, mean),
+  Group = "ON_OCHA"
+)
+
+stats_all <- bind_rows(stats1, stats2)
+
+ggplot(stats_all, aes(x = ColIndex, group = Group)) +
+  geom_ribbon(aes(ymin = Min, ymax = Max, fill = Group),
+              alpha = 0.3) +
+  geom_line(aes(y = Mean, color = Group), size = 1) +
+  geom_point(aes(y = Mean, color = Group), size = 2) +
+  scale_x_continuous(breaks = unique(stats_all$ColIndex)) +
+  labs(
+    x     = "% stance phase",
+    y     = "Degrees",
+    title = "Comparison of BN_OCHA and OB_OCHA"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  )
+```
