@@ -1,0 +1,386 @@
+---
+title: "BMI Walking Stance Project Final Report"
+author: "Suheng Yao, Jonathan Neimann, Yishun Zhang"
+output: pdf_document
+date: "2025-05-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+library(ggcorrplot)
+library(ggplot2)
+library(tidyr)
+library(corrplot)
+library(car)
+library(lme4)
+library(caret)
+library(Metrics)
+library(mgcv)
+library(brms)
+library(broom)
+```
+
+# Abstract
+
+Obesity significantly impacts musculoskeletal health and alters walking biomechanics. This study aimed to quantify the influence of obesity on knee angle changes during various walking tasks and identify associated anthropometric predictors. We analyzed motion sensor data from 35 participants (12 normal-weight, 23 obese) performing six distinct walking tasks (e.g., preferred speed, obstacle negotiation). Knee angle difference (InitialPeak) was the primary outcome. Exploratory data analysis (EDA), including correlation analysis and Variance Inflation Factor (VIF) assessment, guided variable selection. Linear Mixed-Effects Models (LMM), Generalized Additive Mixed Models (GAMM), and Bayesian Mixed Models were developed, incorporating fixed effects for group, demographics, and selected body measurements, with random intercepts for participant and task. Model performance was compared using ANOVA and 5-fold cross-validation (RMSE, R²). Two-sample t-tests compared knee angle differences between groups for each task. EDA and t-tests revealed significantly reduced knee angle differences in the obese group across most tasks (p < 0.05), suggesting less knee flexion. The final LMM demonstrated the best fit and predictive performance (Avg CV RMSE $\approx$ 2.59, Avg CV R² $\approx$ 0.68), identifying significant associations between knee angle difference and Shoulder Breadth (positive), Chest Breadth (negative), Lower Thigh Circumference (negative), Shank Circumference (negative), and A Body Shape Index (ABSI, negative). Significant variability was attributed to both participant and task random effects. In conclusion, obesity is associated with reduced knee flexion during walking, and specific body dimensions beyond BMI contribute significantly to these biomechanical alterations.
+
+# Introduction
+
+Obesity is a growing public health concern worldwide, with well-documented impacts on musculoskeletal health and mobility. Excess body weight alters biomechanical loading patterns during everyday activities, increasing the risk of joint degeneration and chronic musculoskeletal conditions. In particular, deviations in walking mechanics—such as reduced knee flexion and altered foot–ground contact—have been observed in individuals with obesity, suggesting a potential pathway by which obesity contributes to long-term joint dysfunction and osteoarthritis.
+
+Knee angle during gait is a critical marker of walking stance and limb mechanics.
+This project aims to quantify how obesity influences knee-angle trajectories across a series of controlled walking conditions. Thirty-five participants (12 normal-weight, 23 obese) underwent six distinct walking tasks—ranging from preferred and fast speeds to obstacle approaches and crossings at two heights—while equipped with motion sensors on the upper leg, lower leg, and shoes. By comparing knee-angle profiles between obese and non-obese groups, we seek to identify the association between knee angles and people's body measurements.
+
+In this report, we will mainly talk about the EDA of the dataset, the models used to assess the relationship and interpret our models' results to reach a final conclusion.
+
+# Data Description
+```{r, include=FALSE}
+df <- read.csv('BodyShape.csv')
+```
+
+```{r}
+str(df)
+```
+The main dataset used is "BodyShape.csv". It contains the body shape measures, such as BMI, hip circumference, waist hip ratio, cognitive test scores, physical activity scores and the knee angle before and after conducting the task and the difference between those two measures for all 38 participants. However, there are many repeated measures for each participants, which means that linear mixed effect model would be a good baseline model to start with. Next, we will perform EDA to select the important variables related to knee angles.
+
+# EDA
+```{r}
+# change the negative value of initialpeak to its absolute value
+df$InitialPeak[df$InitialPeak < 0] <- abs(df$InitialPeak[df$InitialPeak < 0])
+```
+```{r}
+normal_df <- subset(df, Group == 0)
+obese_df <- subset(df, Group == 1)
+```
+
+```{r}
+par(mfrow=c(1,2))
+hist(normal_df$InitialPeak, main="Knee Angle Diff for Non-obese", xlab="InitialPeak")
+boxplot(normal_df$InitialPeak,  main="InitialPeak")
+```
+```{r}
+par(mfrow=c(1,2))
+hist(obese_df$InitialPeak, main="Knee Angle Diff for Obese", xlab="InitialPeak")
+boxplot(obese_df$InitialPeak,  main="InitialPeak")
+```
+Based on the histogram, for normal people, the knee angle difference is mostly centered around 10 degrees, for obese people, the knee angle difference is more right tailed, there are more observations distributed around 0 to 5 degrees; for boxplot, the median of obese people is slightly lower than normal people. Both plots have showed that the knee angle difference is smaller for obese group, meaning they tend to bend less their knees during the six walking stances.
+```{r, fig.width=15, fig.height=15}
+numeric_cols <- sapply(df, is.numeric)
+numeric_df <- df[, numeric_cols]
+cols_to_remove <- c("biceps_cir", "forearm_cir", "wrist_cir", "head_cir", "Trial", "Initial", "Peak", "Min", "MinPeak", "N", "studyid")
+numeric_df <- numeric_df[, !(names(numeric_df) %in% cols_to_remove)]
+corr <- round(cor(numeric_df, use="pairwise.complete.obs"), 2)
+
+corrplot(corr,
+         method = "circle",
+         type = "upper",    
+         tl.cex = 1.3,      
+         number.cex = 0.6,  
+         tl.col = "black",  
+         tl.srt = 45,       
+         mar = c(0.5, 0.5, 0.1, 0.1) 
+        )
+
+```
+From the correlation plot above, InitialPeak does not have high correlation with any of the body measurements, also, many of the body measurements are highly correlated with each other, and they are also tend to correlate with Group, Body Shape, BMI and weight. We could further use VIF value to test for the multicollinearity.
+```{r}
+mod <- lm(InitialPeak ~ .-leg_l_l - leg_l_r, data = numeric_df)
+car::vif(mod)
+```
+The values above are the values of VIF, and it is clear that most of the body measurement are high correlated with each other since many of the VIF values are far exceeding 10. We will try to remove some of the variables to see if VIF values change.
+```{r}
+mod <- lm(InitialPeak ~ .-leg_l_l - leg_l_r - BMI - waist_cir - hip_cir - thigh_cir - height_m - weight_kg - W.H.ratio - Hip.Index - WA_B - WA_D - BS - SH_D - CH_D, data = numeric_df)
+car::vif(mod)
+```
+As the results shown above, after removing leg_l_l, leg_l_r, BMI, waist_cir, hip_cir, thigh_cir, height_m, weight_kg, W.H.ratio, Hip.Index, WA_B, WA_D, BS, SH_D and CH_D, most of the VIF become lower than 10, thus, we will try include those variables in the later modeling part.
+```{r}
+df$GroupF <- factor(df$Group,
+                    levels = c(0, 1),
+                    labels = c("Normal", "Obese"))
+
+ggplot(df, aes(x = Task, y = InitialPeak, fill = GroupF)) +
+  geom_boxplot(position = position_dodge(width = 0.8),
+               width    = 0.6) +
+  geom_jitter(aes(colour = GroupF),
+              position = position_jitterdodge(
+                dodge.width  = 0.8,
+                jitter.width = 0.2
+              ),
+              alpha = 0.4,
+              size  = 1) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_colour_brewer(palette = "Set2") +
+  labs(
+    title  = "Knee Angles Difference by Task and Body-Mass Group",
+    x      = "Task",
+    y      = "Knee Degrees Diff",
+    fill   = "Group",
+    colour = "Group"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+Based on the boxplot shown above, both groups bent their knees the most when they walk fast, and for all six tasks, people in normal group tend to have greater knee angle difference than the obese group.
+
+# Modeling
+## Model 1: Base Model
+
+```{r, echo=TRUE}
+m1 <- lmer(InitialPeak ~ Group + (1|studyid) + (1|Task), data=df)
+```
+
+## Model 2: Add Some Demographic Info, Cognitive Test Results and Physical Activity Score
+
+```{r, echo=TRUE}
+m2 <- lmer(InitialPeak ~ Group+age+Sex+Race+leg_l+DST+Stroop+PA+(1|studyid)+(1|Task), data=df)
+```
+
+## Model 3: Add More Body Measurement Features
+
+```{r}
+# Impute those NA values
+vars_in_m3_numeric <- c("Speed", "neck_cir", "SH_B", "CH_B", "HIP_B",
+                        "HIP_D", "ASIS", "L_thigh_cir", "shank_cir",
+                        "ankle_cir", "ABSI")
+
+for (col_name in vars_in_m3_numeric) {
+  # Check if the column exists in the dataframe and is numeric
+  if (col_name %in% names(df) && is.numeric(df[[col_name]])) {
+    # Calculate the median, removing NA values
+    col_median <- median(df[[col_name]], na.rm = TRUE)
+
+    # Find which values are NA
+    na_indices <- is.na(df[[col_name]])
+
+    # Replace NA values with the calculated median
+    df[na_indices, col_name] <- col_median
+  }
+}
+```
+
+```{r, echo=TRUE}
+m3 <- lmer(InitialPeak ~ Group+age+Sex+Race+leg_l+
+             DST+Stroop+PA+Speed+neck_cir+SH_B+CH_B+
+             HIP_B+HIP_D+ASIS+L_thigh_cir+shank_cir+
+             ankle_cir+ABSI+(1|studyid)+(1|Task), 
+           data=df)
+```
+
+
+## Use Anova to Compare the Three Models
+
+```{r, include=FALSE}
+anova(m1, m2)
+```
+```{r, include=FALSE}
+anova(m2, m3)
+```
+| Model | AIC    | BIC    | Compared To | Chisq  | Df | Pr(>Chisq)     |
+| :---- | -----: | -----: | :---------- | -----: | -: | :------------- |
+| m1    | 9318.7 | 9346.3 | -           | -      | -  | -              |
+| m2    | 8974.0 | 9040.1 | m1          | 358.75 | 7  | < 2.2e-16 *** |
+| m3    | 8796.8 | 8923.5 | m2          | 199.19 | 11 | < 2.2e-16 *** |
+
+
+Based on the ANOVA results above, Model 3 has the lowest AIC and BIC among all the three models, and p-value of the chi-square test is less than 0.05, meaning adding those body measurements variables into the model 3 is statistically significant, and model 3 is the best model. We can also plot the residual vs fitted plot and QQ plot to test for goodness-of-fit:
+
+\newpage
+
+```{r}
+# Extract fitted values and (raw or Pearson) residuals
+fitted_vals <- fitted(m3)               # vector of ŷᵢⱼ
+residuals_raw  <- residuals(m3)         # raw residuals yᵢⱼ − ŷᵢⱼ
+residuals_pear <- residuals(m3, type="pearson")
+# Basic base-R scatterplot
+plot(fitted_vals, residuals_pear,
+     xlab="Fitted values", ylab="Pearson residuals",
+     main="Residuals vs Fitted")
+abline(h=0, lty=2, col="gray")
+qqnorm(residuals_raw,
+       main="Normal Q–Q Plot of raw residuals")
+qqline(residuals_raw, col="blue", lwd=2)
+```
+Based on the two plots above, the residuals are randomly scattered around 0 and there is no pattern, which satisfies the heteroscedasticity assumption. Also, in qq plot, most of the residuals stay on the blue lines, indicating almost normal residuals. Both of the plots showed that the model fits well with the data.
+
+## Perform Two Sample T-test
+
+Based on the two plots above, we can also consider using two sample t-test to show the difference in knee degrees change between the non-obese group and obese group for each walking stance is statistically significant.
+```{r}
+# --- Ensure correct data types ---
+# Make sure Group and Task are factors
+df <- df %>%
+  mutate(
+    GroupF = factor(GroupF, levels = c("Normal", "Obese")),
+    Task = factor(Task)
+    ) %>%
+  filter(!is.na(InitialPeak) & !is.na(GroupF) & !is.na(Task))
+
+
+# --- Perform t-tests for each Task ---
+task_ttests <- df %>%
+  group_by(Task) %>%
+  do(tidy(t.test(InitialPeak ~ GroupF, data = .))) %>%
+  ungroup() # Ungroup for cleaner output
+
+# --- View the results ---
+print(task_ttests)
+```
+Based on the table above, the estimate shows the estimate for the difference between the two groups, estimate1 shows the mean knee angle changes for the normal group, estimate 2 shows the mean knee angle changes for the obese group, statistic shows the the t-statistic calculated, conf.low and conf.high show the confidence interval for the estimate, and p-value shows whether the t-test statistics are statistically significant or not. Based on the table above, all the tasks showed statistically significant difference between normal and obese groups except OCHA. These results are consistent with the findings from the EDA plot.
+
+## Use Cross Validation to Test the Model Performance
+
+We could also test the model's performance using 5-fold cross validation, where we split the training dataset into 5 folds and randomly pick one fold as validation set to test for the performance and use the other 4 folds to fit the model, we then take the average of the performance on each validation set at the end.
+```{r}
+
+perform_cv <- function(model_formula, data, k_folds = 5, model_function = "lmer",
+                       family = gaussian(),
+                       bam_method = "fREML", bam_discrete = TRUE, bam_nthreads = 1, seed = 724) {
+
+  # --- Create Folds ---
+  set.seed(seed) # Use seed for reproducible folds
+  response_var <- all.vars(model_formula)[1]
+  folds <- createFolds(data[[response_var]], k = k_folds, list = TRUE, returnTrain = FALSE)
+
+  # --- Initialize Vectors for Metrics ---
+  rmse_vector <- numeric(k_folds)
+  r_squared_vector <- numeric(k_folds)
+  fit_errors <- vector("list", k_folds)
+
+  # --- Loop Through Folds ---
+  for (i in 1:k_folds) {
+    test_indices <- folds[[i]]
+    train_indices <- setdiff(1:nrow(data), test_indices)
+
+    train_data <- data[train_indices, ]
+    test_data <- data[test_indices, ]
+
+    # --- Fit the specified model ---
+    model <- NULL
+    fit_error_message <- NULL
+    model <- tryCatch({
+        if (model_function == "bam") {
+            bam(formula = model_formula, data = train_data, family = family,
+                method = bam_method, discrete = bam_discrete, nthreads = bam_nthreads)
+        }
+        else if (model_function == "brm") {
+           fit_brms <- brm(formula = model_formula, data = train_data, family  = gaussian(), cores = 4, chains = 4, iter = 6000, seed = seed, refresh = 0)
+        }
+        else {
+            if (!exists(model_function, mode = "function")) stop(paste("Model function '", model_function, "' not found."), call. = FALSE)
+            do.call(model_function, list(formula = model_formula, data = train_data))
+        }
+    }, error = function(e) {
+        fit_error_message <<- paste("Error fitting model in fold", i, ":", e$message)
+        warning(fit_error_message)
+        return(NULL)
+    })
+
+    fit_errors[[i]] <- fit_error_message
+
+    # --- Predict and Evaluate if model fitting succeeded ---
+    if (!is.null(model)) {
+      predictions <- tryCatch({
+         predict(model, newdata = test_data, type = "response")
+      }, error = function(e) {
+         print(paste("Error predicting in fold", i, ":", e$message))
+         return(NA) # Return NA if prediction fails
+      })
+
+      # Ensure predictions are not NA before calculating metrics
+      if (!any(is.na(predictions))) {
+          # Calculate RMSE
+          rmse_vector[i] <- rmse(actual = test_data[[response_var]], predicted = predictions)
+
+          # Calculate R-squared
+          sse <- sum((test_data[[response_var]] - predictions)^2)
+          # Use training data mean for SST calculation
+          sst <- sum((test_data[[response_var]] - mean(train_data[[response_var]], na.rm=TRUE))^2)
+          if (sst > 0) {
+             r_squared_vector[i] <- 1 - sse / sst
+          } else {
+             r_squared_vector[i] <- NA # Assign NA if SST is not positive
+          }
+      } else {
+         # Assign NA to metrics if prediction failed
+         rmse_vector[i] <- NA
+         r_squared_vector[i] <- NA
+      }
+
+    } else {
+      # Assign NA to metrics if model fitting failed
+      rmse_vector[i] <- NA
+      r_squared_vector[i] <- NA
+    }
+  }
+
+  # --- Calculate Average Performance (ignoring NAs from failed folds) ---
+  avg_rmse <- mean(rmse_vector, na.rm = TRUE)
+  avg_rsq <- mean(r_squared_vector, na.rm = TRUE)
+
+  # --- Return Results as a List ---
+  results <- list(
+    avg_RMSE = avg_rmse,
+    avg_R_squared = avg_rsq,
+    fold_RMSEs = rmse_vector,
+    fold_R_squareds = r_squared_vector
+  )
+
+  return(results)
+}
+```
+```{r}
+formula_m3 <- InitialPeak ~ Group + age + Sex + Race + leg_l + DST + Stroop + PA + Speed + neck_cir + SH_B + CH_B + HIP_B + HIP_D + ASIS + L_thigh_cir + shank_cir + ankle_cir + ABSI + (1|studyid) + (1|Task)
+cv_results_m3 <- perform_cv(model_formula = formula_m3, data = df, k_folds = 5, model_function = "lmer")
+print(cv_results_m3)
+```
+Based on the results above, the average root mean square error for linear mixed effect model is 2.59, and the average R-squared is 0.68. To validate and further improve our results, we can try GAMM(General Additive Mixed Models) and Bayesian Random Effects Models:
+```{r}
+cont_cols <- c("age", "leg_l", "DST", "Stroop", "PA", "Speed", "neck_cir", "SH_B", "CH_B", "HIP_B", "HIP_D", "ASIS", "L_thigh_cir", "shank_cir", "ankle_cir", "ABSI")
+smooth_terms <- sapply(cont_cols, function(v) {
+    n_uniq <- length(unique(df[[v]]))
+    if (n_uniq < 10) {
+      paste0("s(", v, ", k=", max(n_uniq-1,3), ")")
+    } else {
+      paste0("s(", v, ")")
+    }
+  }, USE.NAMES=FALSE)
+df$Task <- factor(df$Task)
+formula_gamm <- as.formula(
+    paste0(
+      "InitialPeak", " ~ ",
+      paste(c("Group", "Sex", "Race", smooth_terms, "s(studyid, bs='re')", "s(Task, bs='re')"), collapse = " + ")
+    )
+  )
+cv_results_gamm <- perform_cv(model_formula = formula_gamm, data = df, k_folds = 5, model_function = "bam")
+print(cv_results_gamm)
+```
+Based on the cross-validation results, GAMM gives very similar results with linear mixed effect models.
+```{r}
+# cv_results_brms <- perform_cv(model_formula = formula_m3, data = df, k_folds = 5, model_function = "brm")
+# print(cv_results_brms)
+```
+Based on the bayesian mixed effects model results, the average RMSE is 5.83, and the average R squared is -5.48, which suggest that it performs a lot worse than both GAMM and linear mixed effect models. Thus, based on all three models above, we plan to stick with the original linear mixed effects model.
+
+# Interpretation of the Model
+```{r, message=FALSE}
+summary(m3)
+```
+Based on the model output above, the most important sections are **scaled residuals**, **random effects** and **fixed effects**. The **scaled residuals** showed that the residuals are symmetric around about 0 and satify the assumption of the linear mixed effect model. For the **random effects**, the results revealed significant variability attributable to differences between participants (Variance = 24.10, SD = 4.91) and, to a lesser extent, between tasks (Variance = 7.35, SD = 2.71). The residual variance, representing within-participant/task variability not explained by the model, was 6.51 (SD = 2.55).
+
+For the **fixed effects**, the variables that showed statistically significant relationship with knee angle difference are SH_B(Shoulder Breadth), CH_B(Chest Breadth), L_thigh_cir(lower thigh circumference), shank_cir(shank circumference) and ABSI(a body shape index). We will interpret each of those coefficients below:
+
+**SH_B(Shoulder Breadth)**: Holding all other variables constant, one inch increase in shoulder breadth, the knee degrees change is expected to increase by 0.87.
+
+**CH_B(Chest Breadth)**: Holding all other variables constant, one inch increase in chest breadth, the knee degrees change is expected to decrease by 0.55.
+
+**L_thigh_cir(lower thigh circumference)**: Holding all other variables constant, one inch increase in lower thigh circumference, the knee degrees change is expected to decrease by 0.44.
+
+**shank_cir(shank circumference)**: Holding all other variables constant, one inch increase in shank circumference, the knee degrees change is expected to decrease by 0.72.
+
+**ABSI(a body shape index)**: Holding all other variables constant, one inch increase in body shape index, the knee degrees change is expected to decrease by 0.37.
+
+# Conclusion
+
+To summarize, the EDA part shows that non-obese people tend to bend their knees more when they walk compared to obese people, and this observation from plot is also supported the two sample t-tests results. The later linear mixed effect model further showed that Shoulder Breadth, Chest Breadth, lower thigh circumference, shank circumference and body shape index have statistically significant effects on the knee degrees change, among those variables, only shoulder breadth have positive relationship with the knee degrees change, and all the other variables are negatively correlated with the response variable.
+

@@ -15,9 +15,9 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 
-df1 <- read_csv("C:/Users/17756/Downloads/NB_FF.csv", col_names = FALSE,
+df1 <- read_csv("NB_FF.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_FF.csv", col_names = FALSE,
+df2 <- read_csv("OB_FF.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 
@@ -54,15 +54,13 @@ ggplot(stats_all, aes(x = ColIndex, group = Group)) +
   theme(
     legend.title = element_blank()
   )
-
-
 ```
 
 
 ```{r}
-df1 <- read_csv("C:/Users/17756/Downloads/NB_PRF.csv", col_names = FALSE,
+df1 <- read_csv("NB_PRF.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_PRF.csv", col_names = FALSE,
+df2 <- read_csv("OB_PRF.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 
@@ -101,9 +99,9 @@ ggplot(stats_all, aes(x = ColIndex, group = Group)) +
   )
 ```
 ```{r}
-df1 <- read_csv("C:/Users/17756/Downloads/NB_OCMB.csv", col_names = FALSE,
+df1 <- read_csv("NB_OCMB.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_OCMB.csv", col_names = FALSE,
+df2 <- read_csv("OB_OCMB.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 
@@ -143,9 +141,9 @@ ggplot(stats_all, aes(x = ColIndex, group = Group)) +
 ```
 
 ```{r}
-df1 <- read_csv("C:/Users/17756/Downloads/NB_OCMA.csv", col_names = FALSE,
+df1 <- read_csv("NB_OCMA.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_OCMA.csv", col_names = FALSE,
+df2 <- read_csv("OB_OCMA.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 
@@ -185,9 +183,9 @@ ggplot(stats_all, aes(x = ColIndex, group = Group)) +
 ```
 
 ```{r}
-df1 <- read_csv("C:/Users/17756/Downloads/NB_OCHB.csv", col_names = FALSE,
+df1 <- read_csv("NB_OCHB.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_OCHB.csv", col_names = FALSE,
+df2 <- read_csv("OB_OCHB.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 
@@ -227,9 +225,9 @@ ggplot(stats_all, aes(x = ColIndex, group = Group)) +
 ```
 
 ```{r}
-df1 <- read_csv("C:/Users/17756/Downloads/NB_OCHA.csv", col_names = FALSE,
+df1 <- read_csv("NB_OCHA.csv", col_names = FALSE,
                        show_col_types = FALSE)
-df2 <- read_csv("C:/Users/17756/Downloads/OB_OCHA.csv", col_names = FALSE,
+df2 <- read_csv("OB_OCHA.csv", col_names = FALSE,
                        show_col_types = FALSE)  
 
 

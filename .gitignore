@@ -5,6 +5,7 @@ Plot.ipynb
 .DS_Store
 *.xlsx
 *.docx
+.Rhistory
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
