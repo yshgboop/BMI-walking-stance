@@ -19,6 +19,7 @@ library(Metrics)
 library(mgcv)
 library(brms)
 library(broom)
+library(glmnet)
 ```
 
 # Abstract
@@ -159,14 +160,69 @@ for (col_name in vars_in_m3_numeric) {
 }
 ```
 
-```{r, echo=TRUE}
+```{r, echo=TRUE, message=FALSE}
 m3 <- lmer(InitialPeak ~ Group+age+Sex+Race+leg_l+
              DST+Stroop+PA+Speed+neck_cir+SH_B+CH_B+
              HIP_B+HIP_D+ASIS+L_thigh_cir+shank_cir+
              ankle_cir+ABSI+(1|studyid)+(1|Task), 
            data=df)
+summary(m3)
 ```
+Since SH_B(Shoulder Breadth), CH_B(Chest Breadth), L_thigh_cir(lower thigh circumference), shank_cir(shank circumference) and ABSI(a body shape index) are the only statistically significant variables based on the model output above. We can try only including those variables as fixed effects and check the performance using ANOVA later.
 
+## Model 4: Only Select Statistically Significant Variables in Model 3
+```{r}
+m4 <- lmer(InitialPeak ~ SH_B+CH_B+L_thigh_cir+shank_cir+ABSI+(1|studyid)+(1|Task), 
+           data=df)
+```
+Another variable selection method we could try is Lasso based on the final model:
+```{r}
+fixed_formula <- InitialPeak ~ Group + age + Sex + Race + leg_l + 
+                     DST + Stroop + PA + Speed + neck_cir + SH_B + CH_B + 
+                     HIP_B + HIP_D + ASIS + L_thigh_cir + shank_cir + 
+                     ankle_cir + ABSI
+
+model_vars <- all.vars(fixed_formula)
+df_lasso <- df[, model_vars, drop = FALSE] 
+df_lasso <- na.omit(df_lasso) 
+
+# Check if data remains after handling NAs
+if(nrow(df_lasso) == 0) {
+  stop("No complete cases remaining after handling NAs. Check your data or imputation strategy.")
+}
+
+X <- model.matrix(fixed_formula[-2], data = df_lasso) 
+X <- X[, -1]
+y <- df_lasso$InitialPeak
+
+# --- Fit Lasso using Cross-Validation ---
+set.seed(724)
+cv_lasso <- cv.glmnet(X, y, alpha = 1, family = "gaussian")
+
+# Identify the optimal lambda values found by cross-validation
+best_lambda_min <- cv_lasso$lambda.min # Lambda giving minimum CV error
+
+cat("Optimal lambda (minimum CV error):", best_lambda_min, "\n")
+
+# --- Examine coefficients using lambda.min ---
+lasso_coefs_min <- coef(cv_lasso, s = best_lambda_min)
+
+cat("\n--- Coefficients using lambda.min ---\n")
+print(lasso_coefs_min)
+
+zero_coef_indices_min <- which(lasso_coefs_min[, 1] == 0)
+zero_coef_names_min <- rownames(lasso_coefs_min)[zero_coef_indices_min]
+zero_coef_names_min <- zero_coef_names_min[zero_coef_names_min != "(Intercept)"]
+
+cat("\nVariables shrunk to 0 by Lasso (using lambda.min):\n")
+if (length(zero_coef_names_min) > 0) {
+  print(zero_coef_names_min)
+} else {
+  cat("None (at lambda.min)\n")
+}
+
+```
+Based on the results above, the optimal $\lambda$ value is 0.001, and all the variables in the final model are not shrunken to zero, meaning they are all considered important by Lasso.
 
 ## Use Anova to Compare the Three Models
 
@@ -176,14 +232,19 @@ anova(m1, m2)
 ```{r, include=FALSE}
 anova(m2, m3)
 ```
-| Model | AIC    | BIC    | Compared To | Chisq  | Df | Pr(>Chisq)     |
-| :---- | -----: | -----: | :---------- | -----: | -: | :------------- |
-| m1    | 9318.7 | 9346.3 | -           | -      | -  | -              |
+```{r, include=FALSE}
+anova(m3, m4)
+```
+
+| Model | AIC    | BIC    | Compared To | Chisq  | Df | Pr(>Chisq)    |
+| :---- | -----: | -----: | :---------- | -----: | -: | :-------------|
+| m1    | 9318.7 | 9346.3 | -           | -      | -  | -             |
 | m2    | 8974.0 | 9040.1 | m1          | 358.75 | 7  | < 2.2e-16 *** |
+| m4    | 9069.8 | 9119.4 | m3          | 301.06 | 14 | < 2.2e-16 *** |
 | m3    | 8796.8 | 8923.5 | m2          | 199.19 | 11 | < 2.2e-16 *** |
 
 
-Based on the ANOVA results above, Model 3 has the lowest AIC and BIC among all the three models, and p-value of the chi-square test is less than 0.05, meaning adding those body measurements variables into the model 3 is statistically significant, and model 3 is the best model. We can also plot the residual vs fitted plot and QQ plot to test for goodness-of-fit:
+Based on the ANOVA results above, Model 3 has the lowest AIC and BIC among all the three models, and p-value of the chi-square test is less than 0.05, meaning adding those body measurements variables into the model 3 is statistically significant, also, by removing those non statistically significant variables in model 4, model 4 still perform poorer than model 3 based on the ANOVA results. Thus, model 3 is the overall best model. We can also plot the residual vs fitted plot and QQ plot to test for goodness-of-fit:
 
 \newpage
 
